@@ -5,6 +5,10 @@ VisualStudioVersion = 15.0.27130.2010
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScriptingSSH", "ScriptingSSH\ScriptingSSH.csproj", "{18B722C1-BA9C-4C12-AE41-355B8DB00C08}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTestProject1", "UnitTestProject1\UnitTestProject1.csproj", "{0AF6588E-FE49-4FFA-B6D4-BAC6E858ABA0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestClient", "TestClient\TestClient.csproj", "{279F22BB-EF00-4263-A492-290E68126904}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{18B722C1-BA9C-4C12-AE41-355B8DB00C08}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{18B722C1-BA9C-4C12-AE41-355B8DB00C08}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{18B722C1-BA9C-4C12-AE41-355B8DB00C08}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0AF6588E-FE49-4FFA-B6D4-BAC6E858ABA0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0AF6588E-FE49-4FFA-B6D4-BAC6E858ABA0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0AF6588E-FE49-4FFA-B6D4-BAC6E858ABA0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0AF6588E-FE49-4FFA-B6D4-BAC6E858ABA0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{279F22BB-EF00-4263-A492-290E68126904}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{279F22BB-EF00-4263-A492-290E68126904}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{279F22BB-EF00-4263-A492-290E68126904}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{279F22BB-EF00-4263-A492-290E68126904}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
