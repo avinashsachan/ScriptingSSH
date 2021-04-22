@@ -9,44 +9,62 @@ namespace ScriptingSSH
     class ScriptingSSH
     {
         private string IP;
-        private int _port = 22;
         private string Username;
         private string Password;
-        private int _Timeout = 30;
-
         private StreamReader reader = null;
         private StreamWriter writer = null;
         private ShellStream stream = null;
-        private SshClient ssh = null;
-       
+        private SshClient client = null;
+        private int _Timeout = 30;
 
         private char[] _mByBuff = new char[32767];
         private StringBuilder _strFullLog = new StringBuilder();
         private StringBuilder _strWorkingData = new StringBuilder();
 
+
+        private int _port = 22;
+
         private delegate void rdr();
         private readonly object _messagesLockWorkingData = new object();
 
 
-        public ScriptingSSH(string ip, string username, string password)
+        public ScriptingSSH(string ip, string username, string password, int port = 22)
         {
             this.IP = ip;
             this.Username = username;
             this.Password = password;
+            this._port = port;
+        }
+
+        public string RunCommand(string commandText, Int32 timeout = 10)
+        {
+            var s = client.RunCommand(commandText);
+            s.CommandTimeout = DateTime.Now.AddSeconds(timeout) - DateTime.Now;
+            return s.Execute();
         }
 
 
-        public bool Connect()
+        public bool Connect(bool KeyBoardInteractive = false)
         {
-
-            ssh = new SshClient(this.IP, this.Username, this.Password);
-            try { ssh.Connect(); }
-            catch (Exception ex)
+            client = new SshClient(this.IP, this._port, this.Username, this.Password);
+            try
             {
-                return false;
+                if (!KeyBoardInteractive)
+                {
+                    client.Connect();
+                }
+                else
+                {
+                    KeyboardInteractiveAuthenticationMethod kMethod = new KeyboardInteractiveAuthenticationMethod(this.Username);
+                    kMethod.AuthenticationPrompt += KMethod_AuthenticationPrompt;
+                    var cInfo = new ConnectionInfo(this.IP, this._port, this.Username, kMethod);
+                    client = new SshClient(cInfo);
+                    client.Connect();
+                }
             }
+            catch { return false; }
 
-            stream = ssh.CreateShellStream("dumb", 160, 200, 1600, 1200, 1024);
+            stream = client.CreateShellStream("XTERM", 160, 200, 1600, 1200, 1024);
             this.reader = new StreamReader(stream);
             this.writer = new StreamWriter(stream);
             writer.AutoFlush = true;
@@ -59,39 +77,42 @@ namespace ScriptingSSH
             return true;
         }
 
+        private void KMethod_AuthenticationPrompt(object sender, Renci.SshNet.Common.AuthenticationPromptEventArgs e)
+        {
+            //throw new NotImplementedException();
+            foreach (var prompt in e.Prompts)
+            {
+                if (prompt.Request.IndexOf("Password:", StringComparison.InvariantCultureIgnoreCase) != -1)
+                {
+                    prompt.Response = this.Password;
+                }
+            }
+        }
+
         private void OnRecievedData(IAsyncResult ar)
         {
             try
             {
-                if (ssh == null || !ssh.IsConnected) return;
-
-                Thread.Sleep(25);
+                if (client == null || !client.IsConnected) return;
+                Thread.Sleep(10);
                 //AsyncCallback recieveData = new AsyncCallback(OnRecievedData);
                 rdr r = new rdr(ReadStream);
                 r.BeginInvoke(new AsyncCallback(OnRecievedData), r);
             }
-            catch (Exception ex)
+            catch //(Exception ex)
             {
-
+                //TODO: Need capture here
             }
 
-        }
-
-        public string RunCommand(string commandText, Int32 timeout = 30)
-        {
-            var s = ssh.RunCommand(commandText);
-            s.CommandTimeout = DateTime.Now.AddSeconds(timeout) - DateTime.Now;
-            return s.Execute();
         }
 
         public void Disconnect()
         {
             this.stream.Dispose();
-            this.ssh.Disconnect();
-            this.ssh.Dispose();
-            this.ssh = null;
+            this.client.Disconnect();
+            this.client.Dispose();
+            this.client = null;
         }
-
 
         private void ReadStream()
         {
@@ -139,10 +160,8 @@ namespace ScriptingSSH
             // Get the starting time
             long lngStart = System.DateTime.Now.AddSeconds(_Timeout).Ticks;
             long lngCurTime = 0;
-            //  Dim start_index As UInt64 = 0
-            //  Dim End_index As UInt64 = 0
             string ln = "";
-            // Dim L As Integer = 0
+
             while (ln.IndexOf(dataToWaitFor, StringComparison.OrdinalIgnoreCase) == -1)
             {
                 // Timeout logic
@@ -185,8 +204,6 @@ namespace ScriptingSSH
             // Get the starting time
             long lngStart = System.DateTime.Now.AddSeconds(_Timeout).Ticks;
             long lngCurTime = 0;
-            //  Dim start_index As UInt64 = 0
-            //  Dim End_index As UInt64 = 0
             string ln = "";
 
             string[] breaks = dataToWaitFor.Split(breakCharacter.ToCharArray());
@@ -276,7 +293,24 @@ namespace ScriptingSSH
             lock (_messagesLockWorkingData)
             {
                 _strFullLog.Clear();
+                _strWorkingData.Clear();
             }
         }
+
+
+        public void Dispose()
+        {
+            try { reader.Dispose(); }
+            catch { }
+
+            try { writer.Dispose(); }
+            catch { }
+
+            try { client.Dispose(); }
+            catch { }
+
+        }
+
+
     }
 }
