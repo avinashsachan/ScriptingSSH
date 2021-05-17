@@ -3,20 +3,31 @@ using System;
 using System.IO;
 using System.Text;
 using System.Threading;
+using System.Collections.Generic;
+using System.Collections;
 
 namespace ScriptingSSH
 {
-    class ScriptingSSH
+    public enum Authenticationtype { Password, Keyboard, Key }
+    public class ScriptingSSH
     {
         private string IP;
+        //public string neID { get; set; }
+
+        public Hashtable KeyboardAuthPrompts = new Hashtable();
+
+        public string keyStr { get; set; }
+        private Authenticationtype authType = Authenticationtype.Password;
         private string Username;
         private string Password;
+
+
+
         private StreamReader reader = null;
         private StreamWriter writer = null;
         private ShellStream stream = null;
         private SshClient client = null;
-        private int _Timeout = 30;
-
+        private int _Timeout = 40;
         private char[] _mByBuff = new char[32767];
         private StringBuilder _strFullLog = new StringBuilder();
         private StringBuilder _strWorkingData = new StringBuilder();
@@ -27,13 +38,20 @@ namespace ScriptingSSH
         private delegate void rdr();
         private readonly object _messagesLockWorkingData = new object();
 
-
-        public ScriptingSSH(string ip, string username, string password, int port = 22)
+        public ScriptingSSH(string ip, string username, string password, int port = 22,
+            Authenticationtype authenticationtype = Authenticationtype.Password)
         {
             this.IP = ip;
             this.Username = username;
             this.Password = password;
             this._port = port;
+            this.authType = authenticationtype;
+        }
+
+
+        public void setKeyString(string keyPath)
+        {
+            keyStr = System.IO.File.ReadAllText(keyPath);
         }
 
         public string RunCommand(string commandText, Int32 timeout = 10)
@@ -43,17 +61,18 @@ namespace ScriptingSSH
             return s.Execute();
         }
 
-
-        public bool Connect(bool KeyBoardInteractive = false)
+        public bool Connect()
         {
+
+
             client = new SshClient(this.IP, this._port, this.Username, this.Password);
             try
             {
-                if (!KeyBoardInteractive)
+                if (authType == Authenticationtype.Password)
                 {
                     client.Connect();
                 }
-                else
+                else if (authType == Authenticationtype.Keyboard)
                 {
                     KeyboardInteractiveAuthenticationMethod kMethod = new KeyboardInteractiveAuthenticationMethod(this.Username);
                     kMethod.AuthenticationPrompt += KMethod_AuthenticationPrompt;
@@ -61,31 +80,51 @@ namespace ScriptingSSH
                     client = new SshClient(cInfo);
                     client.Connect();
                 }
+                else if (authType == Authenticationtype.Key) //Private Key Authentication
+                {
+                    var keystrm = new MemoryStream(Encoding.ASCII.GetBytes(keyStr));
+                    var pk = new PrivateKeyFile(keystrm);
+                    var keyFiles = new[] { pk };
+                    var methods = new List<AuthenticationMethod>();
+                    methods.Add(new PrivateKeyAuthenticationMethod(this.Username, keyFiles));
+                    var cInfo = new ConnectionInfo(this.IP, this._port, this.Username, methods.ToArray());
+                    client = new SshClient(cInfo);
+                    client.Connect();
+                }
             }
-            catch { return false; }
+            catch (Exception ex)
+            {
+                return false;
+            }
 
             stream = client.CreateShellStream("XTERM", 160, 200, 1600, 1200, 1024);
             this.reader = new StreamReader(stream);
             this.writer = new StreamWriter(stream);
             writer.AutoFlush = true;
-
             AsyncCallback recieveData = new AsyncCallback(OnRecievedData);
-
             rdr r = new rdr(ReadStream);
             r.BeginInvoke(recieveData, r);
-
             return true;
         }
+
 
         private void KMethod_AuthenticationPrompt(object sender, Renci.SshNet.Common.AuthenticationPromptEventArgs e)
         {
             //throw new NotImplementedException();
             foreach (var prompt in e.Prompts)
             {
-                if (prompt.Request.IndexOf("Password:", StringComparison.InvariantCultureIgnoreCase) != -1)
+                if (KeyboardAuthPrompts.ContainsKey(prompt))
+                {
+                    prompt.Response = KeyboardAuthPrompts[prompt].ToString();
+                }
+                else if (prompt.Request.IndexOf("Password:", StringComparison.InvariantCultureIgnoreCase) != -1)
                 {
                     prompt.Response = this.Password;
                 }
+                //if (prompt.Request.IndexOf("neId:", StringComparison.InvariantCultureIgnoreCase) != -1)
+                //{
+                //    prompt.Response = neID;
+                //}
             }
         }
 
@@ -129,7 +168,6 @@ namespace ScriptingSSH
             }
         }
 
-
         public int SendAndWait(string message, string waitFor, bool suppressCarriegeReturn = false)
         {
             lock (_messagesLockWorkingData)
@@ -151,8 +189,6 @@ namespace ScriptingSSH
             int t = this.WaitFor(waitFor, breakCharacter);
             return t;
         }
-
-
 
         public int WaitFor(string dataToWaitFor)
         {
@@ -255,9 +291,6 @@ namespace ScriptingSSH
 
         }
 
-
-
-
         public void SendMessage(string message, bool suppressCarriegeReturn)
         {
             if (suppressCarriegeReturn)
@@ -266,7 +299,6 @@ namespace ScriptingSSH
                 this.writer.WriteLine(message);
 
         }
-
 
         public string SessionLog
         {
@@ -300,13 +332,24 @@ namespace ScriptingSSH
 
         public void Dispose()
         {
+            try { reader.Close(); }
+            catch { }
+
+
             try { reader.Dispose(); }
+            catch { }
+
+            try { writer.Close(); }
             catch { }
 
             try { writer.Dispose(); }
             catch { }
 
-            try { client.Dispose(); }
+            try
+            {
+                if (client != null)
+                    client.Dispose();
+            }
             catch { }
 
         }
