@@ -11,6 +11,7 @@ namespace ScriptingSSH
     public enum Authenticationtype { Password, Keyboard, Key }
     public class ScriptingSSH
     {
+        public bool DebugMode = false;
         private string IP;
         //public string neID { get; set; }
 
@@ -161,7 +162,9 @@ namespace ScriptingSSH
             {
                 for (Int32 i = 0; i < ch; i++)
                 {
-                    //Console.Write(_mByBuff[i]);
+                    if (DebugMode)
+                        Console.Write(_mByBuff[i]);
+
                     _strFullLog.Append(_mByBuff[i]);
                     _strWorkingData.Append(_mByBuff[i]);
                 }
