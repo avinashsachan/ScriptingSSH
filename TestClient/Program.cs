@@ -12,6 +12,7 @@ namespace TestClient
         {
 
             var session = new ScriptingSSH.ScriptingSSH(FromConfig.IP, FromConfig.Username, "", 22, ScriptingSSH.Authenticationtype.Key);
+            session.DebugMode = true;
             //session.KeyboardAuthPrompts = new System.Collections.Hashtable();
             //session.KeyboardAuthPrompts.Add("neId", );
 
