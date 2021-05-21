@@ -5,13 +5,27 @@ using System.Text;
 using System.Threading;
 using System.Collections.Generic;
 using System.Collections;
+using System.Text.RegularExpressions;
 
-namespace ScriptingSSH
+namespace SSHLib
 {
     public enum Authenticationtype { Password, Keyboard, Key }
     public class ScriptingSSH
     {
+
+        public bool CleanOutput = false;
+        public List<Regex> CleanUpRegexps = new List<Regex> {
+                new Regex(@"\u001B\[(0?)[0-4];3[0-7]m"),
+                new Regex(@"\u001B\[0m"),
+                new Regex(@"\u0007"),
+                new Regex(@"\u001B\]0(;?)"),
+                new Regex(@"\u001B\[K(;?)"),
+                 new Regex(@"\r"),
+            };
+
+        public bool MaskCommand = false;
         public bool DebugMode = false;
+        public string DebugModeFile = "log.log";
         private string IP;
         //public string neID { get; set; }
 
@@ -158,21 +172,33 @@ namespace ScriptingSSH
         {
             var ch = reader.Read(_mByBuff, 0, _mByBuff.Length);
             if (ch == 0) return;
+            var pktStr = "";
             lock (_messagesLockWorkingData)
             {
                 for (Int32 i = 0; i < ch; i++)
                 {
                     if (DebugMode)
+                    {
                         Console.Write(_mByBuff[i]);
-
+                        pktStr += _mByBuff[i];
+                    }
                     _strFullLog.Append(_mByBuff[i]);
                     _strWorkingData.Append(_mByBuff[i]);
                 }
+
+
+                if (DebugMode)
+                    File.AppendAllText(DebugModeFile, pktStr);
+
             }
         }
 
         public int SendAndWait(string message, string waitFor, bool suppressCarriegeReturn = false)
         {
+            if (DebugMode)
+            {
+                File.AppendAllText(DebugModeFile, $"\n\n\n#-----------------{(MaskCommand ? "##Masked##" : message.Trim())}-------------------#\n\n\n");
+            }
             lock (_messagesLockWorkingData)
             {
                 _strWorkingData.Length = 0;
@@ -184,6 +210,11 @@ namespace ScriptingSSH
         }
         public int SendAndWait(string message, string waitFor, string breakCharacter, bool suppressCarriegeReturn = false)
         {
+            if (DebugMode)
+            {
+                File.AppendAllText(DebugModeFile, $"\n\n\n#-----------------{(MaskCommand ? "##Masked##" : message.Trim())}-------------------#\n\n\n");
+            }
+
             lock (_messagesLockWorkingData)
             {
                 _strWorkingData.Length = 0;
@@ -303,13 +334,27 @@ namespace ScriptingSSH
 
         }
 
+
+        //here issue with prompt match , it will not work
+        public string CleanSessionOutput(string inputString)
+        {
+            foreach (var r in CleanUpRegexps)
+            {
+                inputString = r.Replace(inputString, string.Empty);
+            }
+            return inputString;
+        }
+
         public string SessionLog
         {
             get
             {
                 lock (_messagesLockWorkingData)
                 {
-                    return _strFullLog.ToString();
+                    if (CleanOutput)
+                        return _strFullLog.ToString();
+                    else
+                        return CleanSessionOutput(_strFullLog.ToString());
                 }
             }
         }

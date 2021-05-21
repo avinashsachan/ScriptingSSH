@@ -12,7 +12,7 @@ namespace TestClient
         public static string IP { get { return System.Configuration.ConfigurationManager.AppSettings["ip"].ToString();  } }
 
         public static string Username { get { return System.Configuration.ConfigurationManager.AppSettings["user"].ToString(); } }
-
+        public static string Password { get { return System.Configuration.ConfigurationManager.AppSettings["password"].ToString(); } }
         public static string Path { get { return System.Configuration.ConfigurationManager.AppSettings["path"].ToString(); } }
     }
 }
